@@ -4,12 +4,12 @@ services:
     image: registry.cn-shanghai.aliyuncs.com/wukongim/wukongim:v2
     environment:
       - "WK_CLUSTER_NODEID=1001"  
-      - "WK_CLUSTER_SERVERADDR=xx.xx.xx.xx:11110" # 节点内部通信请求地址
+      - "WK_CLUSTER_SERVERADDR=67.215.229.216:11110" # 节点内部通信请求地址
       - "WK_TRACE_PROMETHEUSAPIURL=http://prometheus:9090" # prometheus监控地址
       - "WK_MODE=release" # release模式
-      - "WK_EXTERNAL_IP=xxx.xxx.xxx.xxx" # 服务器外网ip
-      - "WK_CLUSTER_APIURL=http://xx.xxx.xxx.xx:5001" # api的内网地址
-      - "WK_INTRANET_TCPADDR=xx.xx.xxx.xx:5100" # tcp连接的内网地址，此配置主要用于压测
+      - "WK_EXTERNAL_IP=67.215.229.216" # 服务器外网ip
+      - "WK_CLUSTER_APIURL=http://67.215.229.216:5001" # api的内网地址
+      - "WK_INTRANET_TCPADDR=67.215.229.216:5100" # tcp连接的内网地址，此配置主要用于压测
     healthcheck:
       test: "wget -q -Y off -O /dev/null http://localhost:5001/health > /dev/null 2>&1"
       interval: 10s
