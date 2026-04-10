@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	"github.com/WuKongIM/WuKongIM/internal/options"
+	cluster "github.com/WuKongIM/WuKongIM/pkg/cluster/cluster"
+	"github.com/WuKongIM/WuKongIM/pkg/wkdb"
 	"github.com/WuKongIM/WuKongIM/pkg/wklog"
 	"github.com/WuKongIM/WuKongIM/pkg/wkserver/proto"
 	wkproto "github.com/WuKongIM/WuKongIMGoProto"
@@ -13,7 +15,10 @@ import (
 // RPCClient 定义RPC客户端接口，用于跨节点权限检查
 type RPCClient interface {
 	RequestAllowSendForPerson(toNodeId uint64, from, to string) (*proto.Response, error)
+	RequestPersonSendLimit(toNodeId uint64, channelId, fromUid string, limit int) (bool, error)
 }
+
+const personNoReplyLimit = 10
 
 // PermissionService 权限服务，提供统一的权限检查功能
 type PermissionService struct {
@@ -261,7 +266,60 @@ func (p *PermissionService) allowSend(from, to string) (wkproto.ReasonCode, erro
 		}
 	}
 
+	exceeded, err := p.checkPersonNoReplyLimit(from, to)
+	if err != nil {
+		return wkproto.ReasonSystemError, err
+	}
+	if exceeded {
+		return wkproto.ReasonRateLimit, nil
+	}
+
 	return wkproto.ReasonSuccess, nil
+}
+
+func (p *PermissionService) checkPersonNoReplyLimit(from, to string) (bool, error) {
+	fakeChannelId := options.GetFakeChannelIDWith(from, to)
+	leaderNode, err := Cluster.LeaderOfChannelForRead(fakeChannelId, wkproto.ChannelTypePerson)
+	if err != nil {
+		if errors.Is(err, cluster.ErrChannelClusterConfigNotFound) {
+			return false, nil
+		}
+		p.Error("LeaderOfChannelForRead failed", zap.Error(err), zap.String("channelId", fakeChannelId))
+		return false, err
+	}
+	if options.G.IsLocalNode(leaderNode.Id) {
+		return p.ExceedsPersonNoReplyLimit(fakeChannelId, from, personNoReplyLimit)
+	}
+	exceeded, err := p.rpcClient.RequestPersonSendLimit(leaderNode.Id, fakeChannelId, from, personNoReplyLimit)
+	if err != nil {
+		p.Error("RequestPersonSendLimit RPC call failed", zap.Error(err), zap.String("from", from), zap.String("to", to), zap.Uint64("nodeId", leaderNode.Id))
+		return false, err
+	}
+	return exceeded, nil
+}
+
+func (p *PermissionService) ExceedsPersonNoReplyLimit(channelId, fromUid string, limit int) (bool, error) {
+	if limit <= 0 {
+		return false, nil
+	}
+	messages, err := Store.LoadLastMsgs(channelId, wkproto.ChannelTypePerson, limit)
+	if err != nil {
+		p.Error("LoadLastMsgs failed", zap.Error(err), zap.String("channelId", channelId), zap.String("fromUid", fromUid), zap.Int("limit", limit))
+		return false, err
+	}
+	return exceedsMaxSendWithoutReply(messages, fromUid, limit), nil
+}
+
+func exceedsMaxSendWithoutReply(messages []wkdb.Message, fromUid string, limit int) bool {
+	if limit <= 0 || len(messages) < limit {
+		return false
+	}
+	for _, message := range messages {
+		if message.FromUID != fromUid {
+			return false
+		}
+	}
+	return true
 }
 
 // AllowSendForPersonLocal 本地检查是否允许个人消息发送（替代原有的AllowSendForPerson）

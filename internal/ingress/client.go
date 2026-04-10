@@ -95,6 +95,32 @@ func (c *Client) RequestAllowSendForPerson(toNodeId uint64, from, to string) (*p
 	return c.request(toNodeId, "/wk/ingress/allowSend", data)
 }
 
+func (c *Client) RequestPersonSendLimit(toNodeId uint64, channelId, fromUid string, limit int) (bool, error) {
+	req := &PersonSendLimitReq{
+		ChannelId: channelId,
+		FromUid:   fromUid,
+		Limit:     uint16(limit),
+	}
+	data, err := req.Encode()
+	if err != nil {
+		return false, err
+	}
+	resp, err := c.request(toNodeId, "/wk/ingress/checkPersonSendLimit", data)
+	if err != nil {
+		return false, err
+	}
+	err = c.handleRespError(resp)
+	if err != nil {
+		return false, err
+	}
+	limitResp := &PersonSendLimitResp{}
+	err = limitResp.Decode(resp.Body)
+	if err != nil {
+		return false, err
+	}
+	return limitResp.Exceeded, nil
+}
+
 func (c *Client) RequestSubscribers(toNodeId uint64, channelId string, channelType uint8) ([]string, error) {
 
 	req := &ChannelReq{

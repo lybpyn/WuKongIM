@@ -14,10 +14,11 @@ const getUrlParam = (name: string) => {
 }
 
 var apiurl = getUrlParam("apiurl")
+const defaultApiURL = `${window.location.protocol}//${window.location.hostname}:5001`
 
 
 if (!apiurl || apiurl?.trim() == "") {
-  apiurl = "http://127.0.0.1:5001"
+  apiurl = defaultApiURL
 } else {
   // 去掉 apiurl后的 “/”
   if (apiurl && apiurl.endsWith("/")) {

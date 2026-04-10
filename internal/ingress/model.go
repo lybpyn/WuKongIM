@@ -104,6 +104,57 @@ func (a *AllowSendReq) encode() ([]byte, error) {
 	return enc.Bytes(), nil
 }
 
+type PersonSendLimitReq struct {
+	ChannelId string
+	FromUid   string
+	Limit     uint16
+}
+
+func (p *PersonSendLimitReq) Decode(data []byte) error {
+	dec := wkproto.NewDecoder(data)
+	var err error
+	if p.ChannelId, err = dec.String(); err != nil {
+		return err
+	}
+	if p.FromUid, err = dec.String(); err != nil {
+		return err
+	}
+	if p.Limit, err = dec.Uint16(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *PersonSendLimitReq) Encode() ([]byte, error) {
+	enc := wkproto.NewEncoder()
+	defer enc.End()
+	enc.WriteString(p.ChannelId)
+	enc.WriteString(p.FromUid)
+	enc.WriteUint16(p.Limit)
+	return enc.Bytes(), nil
+}
+
+type PersonSendLimitResp struct {
+	Exceeded bool
+}
+
+func (p *PersonSendLimitResp) Decode(data []byte) error {
+	dec := wkproto.NewDecoder(data)
+	exceeded, err := dec.Uint8()
+	if err != nil {
+		return err
+	}
+	p.Exceeded = wkutil.Uint8ToBool(exceeded)
+	return nil
+}
+
+func (p *PersonSendLimitResp) Encode() ([]byte, error) {
+	enc := wkproto.NewEncoder()
+	defer enc.End()
+	enc.WriteUint8(wkutil.BoolToUint8(p.Exceeded))
+	return enc.Bytes(), nil
+}
+
 type TagUpdateReq struct {
 	TagKey      string
 	ChannelId   string

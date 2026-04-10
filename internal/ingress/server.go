@@ -28,6 +28,8 @@ func (i *Ingress) SetRoutes() {
 	service.Cluster.Route("/wk/ingress/getTag", i.handleGetTag)
 	// 判断接受者是否允许发送消息
 	service.Cluster.Route("/wk/ingress/allowSend", i.handleAllowSend)
+	// 检查个人频道连续发送未回复限制
+	service.Cluster.Route("/wk/ingress/checkPersonSendLimit", i.handleCheckPersonSendLimit)
 	// 更新tag
 	service.Cluster.Route("/wk/ingress/updateTag", i.handleUpdateTag)
 	// 添加tag
@@ -111,6 +113,38 @@ func (i *Ingress) handleAllowSend(ctx *wkserver.Context) {
 		return
 	}
 	ctx.WriteErrorAndStatus(errors.New("not allow send"), proto.Status(reasonCode))
+}
+
+func (i *Ingress) handleCheckPersonSendLimit(ctx *wkserver.Context) {
+	req := &PersonSendLimitReq{}
+	err := req.Decode(ctx.Body())
+	if err != nil {
+		i.Error("handleCheckPersonSendLimit decode err", zap.Error(err))
+		ctx.WriteErr(err)
+		return
+	}
+	if req.ChannelId == "" {
+		ctx.WriteErr(errors.New("channelId is nil"))
+		return
+	}
+	if req.FromUid == "" {
+		ctx.WriteErr(errors.New("fromUid is nil"))
+		return
+	}
+
+	exceeded, err := service.Permission.ExceedsPersonNoReplyLimit(req.ChannelId, req.FromUid, int(req.Limit))
+	if err != nil {
+		i.Error("handleCheckPersonSendLimit failed", zap.Error(err), zap.String("channelId", req.ChannelId), zap.String("fromUid", req.FromUid))
+		ctx.WriteErr(err)
+		return
+	}
+	resp := &PersonSendLimitResp{Exceeded: exceeded}
+	data, err := resp.Encode()
+	if err != nil {
+		ctx.WriteErr(err)
+		return
+	}
+	ctx.Write(data)
 }
 
 func (i *Ingress) handleUpdateTag(c *wkserver.Context) {

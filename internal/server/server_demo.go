@@ -43,21 +43,35 @@ func (s *DemoServer) Start() {
 	s.r.GetGinRoute().Use(gzip.Gzip(gzip.DefaultCompression))
 
 	st, _ := fs.Sub(version.DemoFs, "demo/chatdemo/dist")
-	s.r.GetGinRoute().NoRoute(func(c *gin.Context) {
-
-		if c.Request.URL.Path == "" || c.Request.URL.Path == "/" {
-			c.Redirect(http.StatusFound, fmt.Sprintf("/chatdemo?apiurl=%s", s.s.opts.External.APIUrl))
-			c.Abort()
+	demoFS := http.FS(st)
+	redirectToDemo := func(c *gin.Context) {
+		c.Redirect(http.StatusFound, "/chatdemo/")
+		c.Abort()
+	}
+	serveDemo := func(c *gin.Context) {
+		filePath := strings.TrimPrefix(c.Param("filepath"), "/")
+		if filePath == "" {
+			indexFile, err := demoFS.Open("index.html")
+			if err != nil {
+				c.Status(http.StatusNotFound)
+				return
+			}
+			defer indexFile.Close()
+			stat, err := indexFile.Stat()
+			if err != nil {
+				c.Status(http.StatusNotFound)
+				return
+			}
+			http.ServeContent(c.Writer, c.Request, "index.html", stat.ModTime(), indexFile)
 			return
 		}
+		c.FileFromFS("/"+filePath, demoFS)
+	}
 
-		if strings.HasPrefix(c.Request.URL.Path, "/chatdemo") {
-			c.FileFromFS("./", http.FS(st))
-			return
-		}
-	})
-
-	s.r.GetGinRoute().StaticFS("/chatdemo", http.FS(st))
+	s.r.GetGinRoute().GET("/", redirectToDemo)
+	s.r.GetGinRoute().GET("/chatdemo", redirectToDemo)
+	s.r.GetGinRoute().GET("/chatdemo/*filepath", serveDemo)
+	s.r.GetGinRoute().HEAD("/chatdemo/*filepath", serveDemo)
 
 	s.setRoutes()
 	go func() {

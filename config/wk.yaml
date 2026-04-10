@@ -12,7 +12,7 @@ rootDir: "./wukongimdata" # 数据存储目录
 #wssAddr: "wss://0.0.0.0:5210"  # websocket wss 监听地址 如果打开则需要进行 wssConfig相关的证书配置
 #whitelistOffOfPerson: true # 是否关闭个人白名单 默认为true表示关闭个人白名单的验证
 external: # 公网配置
- ip: "" # 节点外网IP，客户端能够访问到的IP地址，如果客户端是内网使用，这里也可以填写内网IP
+ ip: "67.215.229.216" # 节点外网IP，客户端能够访问到的IP地址，如果客户端是内网使用，这里也可以填写内网IP
 #  tcpAddr: "" #  默认自动获取， 节点的TCP地址 对外公开，APP端长连接通讯  格式： ip:port  
 #  wsAddr: "" # 默认自动获取， 节点的wsAdd地址 对外公开 WEB端长连接通讯 格式： ws://ip:port  （支持域名配置）
 #  wssAddr: "" # 对外的wssAddr地址，也就是客户端真正连接的地址 格式：wss://ip:port （支持域名配置）
@@ -26,9 +26,9 @@ external: # 公网配置
 #  level: 0 # 日志级别 0:未配置,将根据mode属性判断 1:debug 2:info 3:warn 4:error
 #  dir: "./logs" # 日志目录
 #  lineNum: false # 是否打印行号
-#manager: 
-#  on: true # 是否开启管理后台
-#  addr: "0.0.0.0:5300" # 管理后台监听地址 默认为 0.0.0.0:5300
+manager: 
+ on: true # 是否开启管理后台
+ addr: "0.0.0.0:5300" # 管理后台监听地址 默认为 0.0.0.0:5300
 demo: 
  on: true # 是否开启demo
  addr: "0.0.0.0:5172" # demo监听地址 默认为 0.0.0.0:5172
@@ -116,3 +116,7 @@ conversation: # 最近会话配置
 # customerService:
 #   visitorsOn: false # 是否开启访客用户访问
 #   visitorsSuffix: "____vstr" # 访客用户后缀 (带有此后缀的用户将被认为是访客用户，访客用户登录免去token验证，但是只能给访客频道发送消息)
+
+cluster:
+  nodeId: 1001 # 节点id
+  serverAddr: "67.215.229.216:11110" # 节点内部通信请求地址
